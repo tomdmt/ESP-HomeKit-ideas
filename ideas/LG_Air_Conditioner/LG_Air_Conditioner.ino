@@ -1187,11 +1187,11 @@ void my_homekit_loop() {
   }
   if(target_vertical_tilt_angle > current_vertical_tilt_angle && target_vertical_tilt_angle == 90 && target_position == current_position){
     for(int i = 0; i<181; i++) {
-      OneStepAngle(false);
+      OneStepAngle(true);
       delay(3);
     }
 
-    current_vertical_tilt_angle--;
+    current_vertical_tilt_angle++;
     Serial.println("Target vertical_tilt_angle: Closing Completely");
     Serial.print("Current vertical_tilt_angle: ");
     Serial.println(current_vertical_tilt_angle);
