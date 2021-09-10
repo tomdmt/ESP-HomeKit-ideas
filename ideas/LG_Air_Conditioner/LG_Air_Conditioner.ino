@@ -9,17 +9,6 @@
  * HAP section 8.45 Window Covering
  * An accessory contains a switch.
  *
- * This example shows how to:
- * 1. define a switch accessory and its characteristics (in my_accessory.c).
- * 2. get the switch-event sent from iOS Home APP.
- * 3. report the switch value to HomeKit.
- *
- * You should:
- * 1. read and use the Example01_TemperatureSensor with detailed comments
- *    to know the basic concept and usage of this library before other examples。
- * 2. erase the full flash or call homekit_storage_reset() in setup()
- *    to remove the previous HomeKit pairing storage and
- *    enable the pairing with the new accessory of this new HomeKit example.
  */
 
 #include <Arduino.h>
@@ -74,19 +63,19 @@ int current_vertical_tilt_angle;
 
 boolean ok;
 
-uint8_t Active = 1;
-uint8_t currActive = 1;
+uint8_t Active;
+uint8_t currActive;
 
-float current_rotation_speed = 75;
-float rotation_speed = 75;
+float current_rotation_speed;
+float rotation_speed;
 
-uint8_t target_heating_cooling_state = 2;
-uint8_t current_heating_cooling_state = 2;
+uint8_t target_heating_cooling_state;
+uint8_t current_heating_cooling_state;
 
-float target_temperature = 20;
-float current_target_temperature = 20;
+float target_temperature;
+float current_target_temperature;
 
-int current_mode = 1; //1:cool, 2: fan, 3: heat, 4: eco
+int current_mode; //1:cool, 2: fan, 3: heat, 4: eco
 
 unsigned long previousMillis = 0;
 unsigned long interval = 30000;
@@ -94,6 +83,11 @@ unsigned long interval = 30000;
 struct myEEPROMstruct {
   uint8_t EEPROM_position;
   int EEPROM_angle;
+  uint8_t EEPROM_Active;
+  float EEPROM_rotation_speed;
+  uint8_t EEPROM_heating_cooling_state;
+  float EEPROM_target_temperature;
+  int EEPROM_current_mode;
   int counter;
   int spacer;
   } defaultEepromVar, localEepromVar;
@@ -110,6 +104,11 @@ void setup() {
   // Set up the initial (default) values for what is to be stored in EEPROM
   defaultEepromVar.EEPROM_position = 50;
   defaultEepromVar.EEPROM_angle = 90;
+  defaultEepromVar.EEPROM_Active = 1;
+  defaultEepromVar.EEPROM_rotation_speed = 75;
+  defaultEepromVar.EEPROM_heating_cooling_state = 2;
+  defaultEepromVar.EEPROM_target_temperature = 20;
+  defaultEepromVar.EEPROM_current_mode = 1;
   defaultEepromVar.counter = 1;
   defaultEepromVar.spacer = 5;
 
@@ -176,6 +175,27 @@ void setup() {
   Serial.println(current_position);
   Serial.print("initial current angle: ");
   Serial.println(current_vertical_tilt_angle);
+  
+
+  Active = localEepromVar.EEPROM_Active;
+  currActive = localEepromVar.EEPROM_Active;
+  
+  current_rotation_speed = localEepromVar.EEPROM_rotation_speed;
+  rotation_speed = localEepromVar.EEPROM_rotation_speed;
+  
+  target_heating_cooling_state = localEepromVar.EEPROM_heating_cooling_state;
+
+  if(localEepromVar.EEPROM_heating_cooling_state > 2){
+    current_heating_cooling_state = 2;
+  }
+  else{
+    current_heating_cooling_state = localEepromVar.EEPROM_heating_cooling_state;
+  }
+  
+  target_temperature = localEepromVar.EEPROM_target_temperature;
+  current_target_temperature = localEepromVar.EEPROM_target_temperature;
+  
+  current_mode = localEepromVar.EEPROM_current_mode; //1:cool, 2: fan, 3: heat, 4: eco
   
 	wifi_connect(); // in wifi_info.h
 	
@@ -390,10 +410,9 @@ void cha_active_setter(const homekit_value_t value) {
     current_heating_cooling_state = 1; // heating
     }
     else if(current_mode == 4){ // eco
-    target_heating_cooling_state = 3; // cooling
+    target_heating_cooling_state = 3; // auto
     current_heating_cooling_state = 2; // cooling
     }
-
     
     cha_target_heating_cooling_state.value.int_value = target_heating_cooling_state;
     homekit_characteristic_notify(&cha_target_heating_cooling_state, cha_target_heating_cooling_state.value);
@@ -417,6 +436,16 @@ void cha_active_setter(const homekit_value_t value) {
     cha_current_heating_cooling_state.value.int_value = current_heating_cooling_state;
     homekit_characteristic_notify(&cha_current_heating_cooling_state, cha_current_heating_cooling_state.value);
     }
+
+  localEepromVar.counter++;
+  localEepromVar.EEPROM_heating_cooling_state = target_heating_cooling_state;
+  localEepromVar.EEPROM_Active = currActive;
+  localEepromVar.EEPROM_current_mode = current_mode;
+  localEepromVar.EEPROM_rotation_speed = rotation_speed;
+  localEepromVar.EEPROM_target_temperature = current_target_temperature;
+  EEPROM.put(0, localEepromVar);
+  ok = EEPROM.commit();
+  Serial.println((ok) ? "commit OK" : "Commit failed");
 }
 
 void cha_target_heating_cooling_state_setter(const homekit_value_t value) {
@@ -507,6 +536,16 @@ void cha_target_heating_cooling_state_setter(const homekit_value_t value) {
       homekit_characteristic_notify(&cha_current_heating_cooling_state, cha_current_heating_cooling_state.value);
     }
   }
+
+  localEepromVar.counter++;
+  localEepromVar.EEPROM_heating_cooling_state = target_heating_cooling_state;
+  localEepromVar.EEPROM_Active = currActive;
+  localEepromVar.EEPROM_current_mode = current_mode;
+  localEepromVar.EEPROM_rotation_speed = rotation_speed;
+  localEepromVar.EEPROM_target_temperature = current_target_temperature;
+  EEPROM.put(0, localEepromVar);
+  ok = EEPROM.commit();
+  Serial.println((ok) ? "commit OK" : "Commit failed");
 }
 
 
@@ -568,6 +607,16 @@ void cha_rotation_speed_setter(const homekit_value_t value) {
 
   TelnetStream.print("rotation_speed: ");
   TelnetStream.println(rotation_speed);
+
+  localEepromVar.counter++;
+  localEepromVar.EEPROM_heating_cooling_state = target_heating_cooling_state;
+  localEepromVar.EEPROM_Active = currActive;
+  localEepromVar.EEPROM_current_mode = current_mode;
+  localEepromVar.EEPROM_rotation_speed = rotation_speed;
+  localEepromVar.EEPROM_target_temperature = current_target_temperature;
+  EEPROM.put(0, localEepromVar);
+  ok = EEPROM.commit();
+  Serial.println((ok) ? "commit OK" : "Commit failed");
 }
 
 
@@ -594,6 +643,16 @@ void cha_target_temperature_setter(const homekit_value_t value) {
     }
     current_target_temperature = target_temperature;
     }
+
+  localEepromVar.counter++;
+  localEepromVar.EEPROM_heating_cooling_state = target_heating_cooling_state;
+  localEepromVar.EEPROM_Active = currActive;
+  localEepromVar.EEPROM_current_mode = current_mode;
+  localEepromVar.EEPROM_rotation_speed = rotation_speed;
+  localEepromVar.EEPROM_target_temperature = current_target_temperature;
+  EEPROM.put(0, localEepromVar);
+  ok = EEPROM.commit();
+  Serial.println((ok) ? "commit OK" : "Commit failed");
 }
 
 
@@ -952,8 +1011,16 @@ void my_homekit_loop() {
       break;
       
     }
-    
-    
+    localEepromVar.counter++;
+    localEepromVar.EEPROM_heating_cooling_state = target_heating_cooling_state;
+    localEepromVar.EEPROM_Active = currActive;
+    localEepromVar.EEPROM_current_mode = current_mode;
+    localEepromVar.EEPROM_rotation_speed = rotation_speed;
+    localEepromVar.EEPROM_target_temperature = current_target_temperature;
+    EEPROM.put(0, localEepromVar);
+    ok = EEPROM.commit();
+    Serial.println((ok) ? "commit OK" : "Commit failed");
+  
     irrecv.resume();  // Receive the next value
   }
 

@@ -14,7 +14,7 @@
 #include <WiFi.h>
 #endif
 
-#include "arduino_secrets.h"
+#include <arduino_secrets.h>
 
 const char *ssid = SECRET_SSID;
 const char *password = SECRET_PASS;
