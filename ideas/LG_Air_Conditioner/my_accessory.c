@@ -18,17 +18,17 @@ void my_accessory_identify(homekit_value_t _value) {
 // optional: NAME, Hold Position, Obstruction Detected
 
 // format: int; HAP section 9.27;
-homekit_characteristic_t cha_target_position = HOMEKIT_CHARACTERISTIC_(TARGET_POSITION, 50);
+homekit_characteristic_t cha_target_position = HOMEKIT_CHARACTERISTIC_(TARGET_POSITION, 0);
 
 // format: int; HAP section 9.27;
-homekit_characteristic_t cha_current_position = HOMEKIT_CHARACTERISTIC_(CURRENT_POSITION, 50);
+homekit_characteristic_t cha_current_position = HOMEKIT_CHARACTERISTIC_(CURRENT_POSITION, 0);
 
 
 // format: int; HAP section 9.123;
-homekit_characteristic_t cha_target_vertical_tilt_angle = HOMEKIT_CHARACTERISTIC_(TARGET_VERTICAL_TILT_ANGLE, 90);
+homekit_characteristic_t cha_target_vertical_tilt_angle = HOMEKIT_CHARACTERISTIC_(TARGET_VERTICAL_TILT_ANGLE, 0);
 
 // format: int; HAP section 9.28;
-homekit_characteristic_t cha_current_vertical_tilt_angle = HOMEKIT_CHARACTERISTIC_(CURRENT_VERTICAL_TILT_ANGLE, 90);
+homekit_characteristic_t cha_current_vertical_tilt_angle = HOMEKIT_CHARACTERISTIC_(CURRENT_VERTICAL_TILT_ANGLE, 0);
 
 
 // format: string; HAP section 9.62; max length 64
@@ -74,7 +74,7 @@ homekit_accessory_t *accessories[] = {
         HOMEKIT_CHARACTERISTIC(MANUFACTURER, "Tom"),
         HOMEKIT_CHARACTERISTIC(SERIAL_NUMBER, "16446759"),
         HOMEKIT_CHARACTERISTIC(MODEL, "ESP8266"),
-        HOMEKIT_CHARACTERISTIC(FIRMWARE_REVISION, "1.0"),
+        HOMEKIT_CHARACTERISTIC(FIRMWARE_REVISION, "1.1"),
         HOMEKIT_CHARACTERISTIC(IDENTIFY, my_accessory_identify),
         NULL
       }),
