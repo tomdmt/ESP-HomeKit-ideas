@@ -14,7 +14,6 @@
 #include <WiFi.h>
 #endif
 
-
 #include <arduino_secrets.h>
 
 const char *ssid = SECRET_SSID;
@@ -25,7 +24,8 @@ void wifi_connect() {
 	WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
 	//WiFi.setAutoReconnect(true);
-	WiFi.persistent(false);
+	
+  WiFi.persistent(false);
 	Serial.println("WiFi connecting...");
 	while (!WiFi.isConnected()) {
 		delay(100);

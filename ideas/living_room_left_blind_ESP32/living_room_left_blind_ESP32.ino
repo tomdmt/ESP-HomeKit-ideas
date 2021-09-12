@@ -28,9 +28,8 @@
 
 Preferences preferences;
 //#include <Schedule.h>
-//#include <ESP8266mDNS.h>
 
-
+#include <ESPmDNS.h>
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
 
@@ -48,11 +47,18 @@ int step_number_position = 0;
 
 uint8_t target_position;
 uint8_t current_position;
+float positionStepSize;
 
 int target_vertical_tilt_angle;
 int current_vertical_tilt_angle;
+float angleStepSize;
 
 uint32_t chipId = 0;
+
+unsigned long previousMillis = 0;
+unsigned long interval = 30000;
+
+int moved = 0;
 
 void setup() {
   Serial.begin(115200);
@@ -150,6 +156,16 @@ void setup() {
 }
 
 void loop() {
+  unsigned long currentMillis = millis();
+  // if WiFi is down, try reconnecting every CHECK_WIFI_TIME seconds
+  if ((WiFi.status() != WL_CONNECTED) && (currentMillis - previousMillis >=interval)) {
+    Serial.print(millis());
+    Serial.println("Reconnecting to WiFi...");
+    WiFi.disconnect();
+    wifi_connect(); // in wifi_info.h
+    previousMillis = currentMillis;
+  }
+  
   ArduinoOTA.handle();
 	my_homekit_loop();
 
@@ -163,6 +179,29 @@ void loop() {
       TelnetStream.println("bye bye bye");
       TelnetStream.flush();
       TelnetStream.stop();
+      break;
+
+
+
+    case 'M':
+      TelnetStream.println("mDNS announce");
+      delay(100);
+      //MDNS.announce();
+      TelnetStream.println("mDNS announce done");
+      break;
+    case 'W':
+      TelnetStream.println("WiFi.disconnect() and wifi_connect()");
+      delay(100);
+      WiFi.disconnect();
+      wifi_connect(); // in wifi_info.h
+      TelnetStream.println("WiFi.disconnect() and wifi_connect() done");
+      break;
+    case 'S':
+      TelnetStream.println("setup()");
+      delay(100);
+      WiFi.disconnect();
+      setup();
+      TelnetStream.println("setup() done");
       break;
     case 'T':
       TelnetStream.println("erasing HomeKit pairing data");
@@ -430,6 +469,21 @@ void my_homekit_loop() {
   }
 
   if(target_vertical_tilt_angle == current_vertical_tilt_angle){
+    if(moved){
+      if(target_vertical_tilt_angle == 90){
+        for(int i = 0; i<angleStepSize/2; i++) {
+          OneStepAngle(false);
+          delay(3);
+        }
+      }
+      else if(target_vertical_tilt_angle == -90){
+        for(int i = 0; i<angleStepSize/2; i++) {
+          OneStepAngle(true);
+          delay(3);
+        }
+      }
+      moved = 0;
+    }
     digitalWrite(STEPPER_PIN_1, LOW);
     digitalWrite(STEPPER_PIN_2, LOW);
     digitalWrite(STEPPER_PIN_3, LOW);
@@ -452,7 +506,14 @@ void my_homekit_loop() {
 
   // position
   if(target_position > current_position){
-    for(int i = 0; i<320; i++) {
+    if(target_position == 100){
+      positionStepSize = 325;
+    }
+    else{
+      positionStepSize = 320;
+    }
+    
+    for(int i = 0; i<positionStepSize; i++) {
       OneStepPosition(true);
       delay(3);
     }
@@ -470,8 +531,15 @@ void my_homekit_loop() {
     cha_current_position.value.int_value = current_position;
     homekit_characteristic_notify(&cha_current_position, cha_current_position.value);
   }
-  if(target_position < current_position && target_position != 0){
-    for(int i = 0; i<320; i++) {
+  if(target_position < current_position && target_position){
+    if(target_position == 0){
+      positionStepSize = 325;
+    }
+    else{
+      positionStepSize = 320;
+    }
+    
+    for(int i = 0; i<positionStepSize; i++) {
       OneStepPosition(false);
       delay(3);
     }
@@ -489,29 +557,18 @@ void my_homekit_loop() {
     cha_current_position.value.int_value = current_position;
     homekit_characteristic_notify(&cha_current_position, cha_current_position.value);
   }
-  if(target_position < current_position && target_position == 0){
-    for(int i = 0; i<325; i++) {
-      OneStepPosition(false);
-      delay(3);
-    }
-    digitalWrite(STEPPER_PIN_5, LOW);
-    digitalWrite(STEPPER_PIN_6, LOW);
-    digitalWrite(STEPPER_PIN_7, LOW);
-    digitalWrite(STEPPER_PIN_8, LOW);
-
-    current_position--;
-    Serial.println("Target Position: Closing Completely");
-    Serial.print("Current Position: ");
-    Serial.println(current_position);
-    //report the lock-mechanism current-sate to HomeKit
-    cha_current_position.value.int_value = current_position;
-    homekit_characteristic_notify(&cha_current_position, cha_current_position.value);
-  }
   
   // Vertical Angle
   if(target_vertical_tilt_angle > current_vertical_tilt_angle){
-
-    for(int i = 0; i<313*.73; i++) {
+    moved = 1;
+    if(target_vertical_tilt_angle == 90){
+      angleStepSize = 313*.74;
+    }
+    else{
+      angleStepSize = 313*.73;
+    }
+    
+    for(int i = 0; i<angleStepSize; i++) {
       OneStepAngle(true);
       delay(3);
     }
@@ -529,9 +586,16 @@ void my_homekit_loop() {
     cha_current_vertical_tilt_angle.value.int_value = current_vertical_tilt_angle;
     homekit_characteristic_notify(&cha_current_vertical_tilt_angle, cha_current_vertical_tilt_angle.value);
   }
-  if(target_vertical_tilt_angle < current_vertical_tilt_angle && target_vertical_tilt_angle != -90){
- 
-    for(int i = 0; i<313*.73; i++) {
+  if(target_vertical_tilt_angle < current_vertical_tilt_angle){
+    moved = 1;
+    if(target_vertical_tilt_angle == -90){
+      angleStepSize = 313*.74;
+    }
+    else{
+      angleStepSize = 313*.73;
+    }
+    
+    for(int i = 0; i<angleStepSize; i++) {
       OneStepAngle(false);
       delay(3);
     }
@@ -549,23 +613,4 @@ void my_homekit_loop() {
     cha_current_vertical_tilt_angle.value.int_value = current_vertical_tilt_angle;
     homekit_characteristic_notify(&cha_current_vertical_tilt_angle, cha_current_vertical_tilt_angle.value);
   }
-  if(target_vertical_tilt_angle < current_vertical_tilt_angle && target_vertical_tilt_angle == -90){
-    for(int i = 0; i<313*.73; i++) {
-      OneStepAngle(false);
-      delay(3);
-    }
-    digitalWrite(STEPPER_PIN_1, LOW);
-    digitalWrite(STEPPER_PIN_2, LOW);
-    digitalWrite(STEPPER_PIN_3, LOW);
-    digitalWrite(STEPPER_PIN_4, LOW);
-
-    current_vertical_tilt_angle--;
-    Serial.println("Target vertical_tilt_angle: Closing Completely");
-    Serial.print("Current vertical_tilt_angle: ");
-    Serial.println(current_vertical_tilt_angle);
-    //report the lock-mechanism current-sate to HomeKit
-    cha_current_vertical_tilt_angle.value.int_value = current_vertical_tilt_angle;
-    homekit_characteristic_notify(&cha_current_vertical_tilt_angle, cha_current_vertical_tilt_angle.value);
-  }
-
 }

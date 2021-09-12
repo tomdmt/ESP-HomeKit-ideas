@@ -36,7 +36,7 @@ char serial[16] = "XXXXXX\0";
 homekit_accessory_t *accessories[] = {
     HOMEKIT_ACCESSORY(.id=1, .category=homekit_accessory_category_window_covering, .services=(homekit_service_t*[]) {
         HOMEKIT_SERVICE(ACCESSORY_INFORMATION, .characteristics=(homekit_characteristic_t*[]) {
-            HOMEKIT_CHARACTERISTIC(NAME, "ESP32_WindowCoveringStructNoDHT_OTA"),
+            HOMEKIT_CHARACTERISTIC(NAME, "ESP32_WindowCoveringPrefOTANoDHT"),
             HOMEKIT_CHARACTERISTIC(MANUFACTURER, "Tom Duan"),
             HOMEKIT_CHARACTERISTIC(SERIAL_NUMBER, serial),
             HOMEKIT_CHARACTERISTIC(MODEL, "ESP32"),

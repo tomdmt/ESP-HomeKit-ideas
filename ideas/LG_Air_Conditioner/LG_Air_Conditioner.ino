@@ -102,8 +102,8 @@ void setup() {
   Serial.println(sizeof(myEEPROMstruct));
 
   // Set up the initial (default) values for what is to be stored in EEPROM
-  defaultEepromVar.EEPROM_position = 0;
-  defaultEepromVar.EEPROM_angle = 0;
+  defaultEepromVar.EEPROM_position = 50;
+  defaultEepromVar.EEPROM_angle = 90;
   defaultEepromVar.EEPROM_Active = 1;
   defaultEepromVar.EEPROM_rotation_speed = 75;
   defaultEepromVar.EEPROM_heating_cooling_state = 2;
@@ -342,15 +342,15 @@ extern "C" homekit_characteristic_t cha_rotation_speed;
 //static uint32_t next_heap_millis = 0;
 static uint32_t next_report_millis = 0;
 
-#define STEPPER_PIN_1 15
-#define STEPPER_PIN_2 13
-#define STEPPER_PIN_3 12
-#define STEPPER_PIN_4 14
+#define STEPPER_PIN_1 0
+#define STEPPER_PIN_2 4
+#define STEPPER_PIN_3 5
+#define STEPPER_PIN_4 16
 
-#define STEPPER_PIN_5 0
-#define STEPPER_PIN_6 4
-#define STEPPER_PIN_7 5
-#define STEPPER_PIN_8 16
+#define STEPPER_PIN_5 15
+#define STEPPER_PIN_6 13
+#define STEPPER_PIN_7 12
+#define STEPPER_PIN_8 14
 
 
 
@@ -364,15 +364,11 @@ void cha_target_position_setter(const homekit_value_t value) {
 	Serial.print("Target Position: ");
   Serial.println(target_position);
 
-  if(target_position == 100){ //fully open
-  target_vertical_tilt_angle = 0;
+  if(target_position == 0){
+    target_vertical_tilt_angle = 90;
+    target_vertical_tilt_angle = value.int_value;
+    cha_target_vertical_tilt_angle.value.int_value = target_vertical_tilt_angle;  //sync the value
   }
-  else if(target_position == 0){ //fully closed
-  target_vertical_tilt_angle = 90;
-  }
-
-  cha_target_vertical_tilt_angle.value.int_value = target_vertical_tilt_angle;  //sync the value
-  homekit_characteristic_notify(&cha_target_vertical_tilt_angle, cha_target_vertical_tilt_angle.value);
 }
 
 //Called when the target_vertical_tilt_angle value is changed by iOS Home APP
@@ -382,7 +378,11 @@ void cha_target_vertical_tilt_angle_setter(const homekit_value_t value) {
   Serial.print("Target Vertical Tilt Angle: ");
   Serial.println(target_vertical_tilt_angle);
 
-
+  if(target_vertical_tilt_angle == -90){
+    target_position = 50;
+    cha_target_position.value.int_value = target_position;  //sync the value
+    homekit_characteristic_notify(&cha_target_position, cha_target_position.value);
+  }
 }
 
 //Called when the switch value is changed by iOS Home APP
@@ -1107,7 +1107,7 @@ void my_homekit_loop() {
 
   // position
   if(target_position > current_position){
-    for(int i = 0; i<560; i++) {
+    for(int i = 0; i<320; i++) {
       OneStepPosition(true);
       delay(3);
     }
@@ -1122,7 +1122,7 @@ void my_homekit_loop() {
     homekit_characteristic_notify(&cha_current_position, cha_current_position.value);
   }
   if(target_position < current_position && target_position != 0){
-    for(int i = 0; i<560; i++) {
+    for(int i = 0; i<320; i++) {
       OneStepPosition(false);
       delay(3);
     }
@@ -1136,8 +1136,8 @@ void my_homekit_loop() {
     cha_current_position.value.int_value = current_position;
     homekit_characteristic_notify(&cha_current_position, cha_current_position.value);
   }
-  if(target_position < current_position && target_position == 0){
-    for(int i = 0; i<560; i++) {
+  if(target_position < current_position && target_position == 0 && target_vertical_tilt_angle == current_vertical_tilt_angle){
+    for(int i = 0; i<325; i++) {
       OneStepPosition(false);
       delay(3);
     }
@@ -1153,9 +1153,9 @@ void my_homekit_loop() {
 
   
   // Vertical Angle
-  if(target_vertical_tilt_angle > current_vertical_tilt_angle && target_vertical_tilt_angle != 90){
+  if(target_vertical_tilt_angle > current_vertical_tilt_angle){
 
-    for(int i = 0; i<179; i++) {
+    for(int i = 0; i<313; i++) {
       OneStepAngle(true);
       delay(3);
     }
@@ -1169,9 +1169,9 @@ void my_homekit_loop() {
     cha_current_vertical_tilt_angle.value.int_value = current_vertical_tilt_angle;
     homekit_characteristic_notify(&cha_current_vertical_tilt_angle, cha_current_vertical_tilt_angle.value);
   }
-  if(target_vertical_tilt_angle < current_vertical_tilt_angle){
+  if(target_vertical_tilt_angle < current_vertical_tilt_angle && target_vertical_tilt_angle != -90){
  
-    for(int i = 0; i<179; i++) {
+    for(int i = 0; i<313; i++) {
       OneStepAngle(false);
       delay(3);
     }
@@ -1185,13 +1185,13 @@ void my_homekit_loop() {
     cha_current_vertical_tilt_angle.value.int_value = current_vertical_tilt_angle;
     homekit_characteristic_notify(&cha_current_vertical_tilt_angle, cha_current_vertical_tilt_angle.value);
   }
-  if(target_vertical_tilt_angle > current_vertical_tilt_angle && target_vertical_tilt_angle == 90 && target_position == current_position){
-    for(int i = 0; i<181; i++) {
-      OneStepAngle(true);
+  if(target_vertical_tilt_angle < current_vertical_tilt_angle && target_vertical_tilt_angle == -90){
+    for(int i = 0; i<313; i++) {
+      OneStepAngle(false);
       delay(3);
     }
 
-    current_vertical_tilt_angle++;
+    current_vertical_tilt_angle--;
     Serial.println("Target vertical_tilt_angle: Closing Completely");
     Serial.print("Current vertical_tilt_angle: ");
     Serial.println(current_vertical_tilt_angle);
