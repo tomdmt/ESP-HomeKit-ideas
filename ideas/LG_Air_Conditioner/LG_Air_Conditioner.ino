@@ -366,8 +366,17 @@ void cha_target_position_setter(const homekit_value_t value) {
 
   if(target_position == 0){
     target_vertical_tilt_angle = 90;
-    target_vertical_tilt_angle = value.int_value;
     cha_target_vertical_tilt_angle.value.int_value = target_vertical_tilt_angle;  //sync the value
+    homekit_characteristic_notify(&cha_target_vertical_tilt_angle, cha_target_vertical_tilt_angle.value);
+  }
+  else if(target_position == 100){
+    target_position = 50;
+    cha_target_position.value.int_value = target_position;  //sync the value
+    homekit_characteristic_notify(&cha_target_position, cha_target_position.value);
+    
+    target_vertical_tilt_angle = -90;
+    cha_target_vertical_tilt_angle.value.int_value = target_vertical_tilt_angle;  //sync the value
+    homekit_characteristic_notify(&cha_target_vertical_tilt_angle, cha_target_vertical_tilt_angle.value);
   }
 }
 
